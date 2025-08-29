@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>i-remember - API Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'mono': ['JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="dark bg-gray-900 min-h-screen font-mono text-sm">
+    <div class="container mx-auto max-w-6xl p-6">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                <h1 class="text-2xl font-bold text-white ml-4">i-remember</h1>
+            </div>
+            <p class="text-gray-400 text-sm ml-12">API Testing Terminal</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6 shadow-xl">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <span class="text-blue-400">⚡</span> Configuration
+            </h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-cyan-400 mb-2">Data (JSON)</label>
+                    <textarea 
+                        id="dataInput" 
+                        rows="4" 
+                        placeholder='{"location": "Istanbul"}'
+                        class="w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-green-400 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    ></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-cyan-400 mb-2">Valid Duration (minutes)</label>
+                    <input 
+                        type="number" 
+                        id="validInput" 
+                        value="1" 
+                        min="1" 
+                        max="60"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-green-400 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                    
+                    <!-- Key Display -->
+                    <div id="keyDisplay" class="mt-4 hidden">
+                        <label class="block text-sm font-medium text-cyan-400 mb-2">Current Authorization Key</label>
+                        <div class="bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-yellow-400 font-mono text-xs break-all">
+                            <span id="currentKey"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6 shadow-xl">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <span class="text-purple-400">🎮</span> API Operations
+            </h2>
+            
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <button 
+                    onclick="createData()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                    <span class="text-sm">📝</span> POST
+                </button>
+                
+                <button 
+                    onclick="getData()" 
+                    id="getBtn" 
+                    disabled 
+                    class="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                    <span class="text-sm">👁️</span> GET
+                </button>
+                
+                <button 
+                    onclick="updateData()" 
+                    id="updateBtn" 
+                    disabled 
+                    class="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                    <span class="text-sm">✏️</span> PUT
+                </button>
+                
+                <button 
+                    onclick="deleteData()" 
+                    id="deleteBtn" 
+                    disabled 
+                    class="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                    <span class="text-sm">🗑️</span> DELETE
+                </button>
+                
+                <button 
+                    onclick="clearOutput()" 
+                    class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                    <span class="text-sm">🧹</span> CLEAR
+                </button>
+            </div>
+        </div>
+
+        <!-- Terminal Output -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 shadow-xl">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <span class="text-green-400">💻</span> Terminal Output
+            </h2>
+            
+            <div 
+                id="output" 
+                class="bg-black rounded-md p-4 h-96 overflow-y-auto border border-gray-600 font-mono text-sm"
+            >
+                <div class="text-green-400 mb-2">
+                    <span class="text-blue-400">[i-remember]</span> 
+                    <span class="text-cyan-400">user@terminal</span>
+                    <span class="text-white">:~$</span> 
+                    <span class="text-gray-300">Welcome to i-remember API Terminal</span>
+                </div>
+                <div class="text-gray-400">
+                    Ready to test your API endpoints...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = "/api";
+        let currentKey = null;
+
+        function addToOutput(text, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = 'mb-2';
+            
+            let colorClass = 'text-gray-300';
+            let icon = '💬';
+            
+            switch(type) {
+                case 'success':
+                    colorClass = 'text-green-400';
+                    icon = '✅';
+                    break;
+                case 'error':
+                    colorClass = 'text-red-400';
+                    icon = '❌';
+                    break;
+                case 'request':
+                    colorClass = 'text-blue-400';
+                    icon = '🚀';
+                    break;
+                case 'response':
+                    colorClass = 'text-yellow-400';
+                    icon = '📨';
+                    break;
+            }
+            
+            div.innerHTML = `
+                <div class="${colorClass}">
+                    <span class="text-gray-500 text-xs">[${timestamp}]</span>
+                    <span class="text-cyan-400">[i-remember]</span> 
+                    <span class="text-white">${icon}</span>
+                    <span class="ml-2">${text}</span>
+                </div>
+            `;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateButtons() {
+            const hasKey = currentKey !== null;
+            document.getElementById('getBtn').disabled = !hasKey;
+            document.getElementById('updateBtn').disabled = !hasKey;
+            document.getElementById('deleteBtn').disabled = !hasKey;
+            
+            const keyDisplay = document.getElementById('keyDisplay');
+            const keySpan = document.getElementById('currentKey');
+            
+            if (hasKey) {
+                keyDisplay.classList.remove('hidden');
+                keySpan.textContent = currentKey;
+            } else {
+                keyDisplay.classList.add('hidden');
+            }
+        }
+
+        async function makeRequest(method, endpoint = "/i-remember", headers = {}, jsonData = null) {
+            try {
+                const config = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    }
+                };
+
+                if (jsonData) {
+                    config.body = JSON.stringify(jsonData);
+                }
+
+                addToOutput(`${method} ${BASE_URL}${endpoint}`, 'request');
+                
+                const response = await fetch(`${BASE_URL}${endpoint}`, config);
+                const data = await response.json();
+                
+                const responseType = response.ok ? 'response' : 'error';
+                const formattedData = JSON.stringify(data, null, 2);
+                addToOutput(`${response.status}: ${formattedData}`, responseType);
+                
+                return { response, data };
+            } catch (error) {
+                addToOutput(`Network Error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function createData() {
+            const dataInput = document.getElementById('dataInput').value;
+            const validInput = document.getElementById('validInput').value;
+            
+            let data;
+            try {
+                data = JSON.parse(dataInput || '{"location": "Istanbul"}');
+            } catch (e) {
+                addToOutput('Invalid JSON format in data field', 'error');
+                return;
+            }
+
+            addToOutput('Creating new data entry...', 'info');
+            const result = await makeRequest('POST', '/i-remember', {}, {
+                data: data,
+                valid: parseInt(validInput)
+            });
+
+            if (result && result.response.ok) {
+                currentKey = result.data.detail;
+                updateButtons();
+                addToOutput(`Authorization key generated and stored`, 'success');
+            }
+        }
+
+        async function getData() {
+            if (!currentKey) {
+                addToOutput('No authorization key available', 'error');
+                return;
+            }
+            
+            addToOutput('Retrieving stored data...', 'info');
+            await makeRequest('GET', '/i-remember', { 'Authorization': currentKey });
+        }
+
+        async function updateData() {
+            if (!currentKey) {
+                addToOutput('No authorization key available', 'error');
+                return;
+            }
+            
+            const dataInput = document.getElementById('dataInput').value;
+            const validInput = document.getElementById('validInput').value;
+            
+            let data;
+            try {
+                data = JSON.parse(dataInput || '{"location": "Ankara"}');
+            } catch (e) {
+                addToOutput('Invalid JSON format in data field', 'error');
+                return;
+            }
+
+            addToOutput('Updating existing data...', 'info');
+            await makeRequest('PUT', '/i-remember', { 'Authorization': currentKey }, {
+                data: data,
+                valid: parseInt(validInput)
+            });
+        }
+
+        async function deleteData() {
+            if (!currentKey) {
+                addToOutput('No authorization key available', 'error');
+                return;
+            }
+            
+            addToOutput('Deleting data entry...', 'info');
+            const result = await makeRequest('DELETE', '/i-remember', { 'Authorization': currentKey }, {});
+            
+            if (result && result.response.ok) {
+                currentKey = null;
+                updateButtons();
+                addToOutput('Data deleted and key cleared', 'success');
+            }
+        }
+
+        function clearOutput() {
+            const output = document.getElementById('output');
+            output.innerHTML = `
+                <div class="text-green-400 mb-2">
+                    <span class="text-blue-400">[i-remember]</span> 
+                    <span class="text-cyan-400">user@terminal</span>
+                    <span class="text-white">:~$</span> 
+                    <span class="text-gray-300">Terminal cleared</span>
+                </div>
+            `;
+        }
+
+        // Initialize
+        updateButtons();
+        
+        // Set default data
+        document.getElementById('dataInput').value = '{"location": "Istanbul"}';
+    </script>
+</body>
+</html>

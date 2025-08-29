@@ -1,0 +1,26 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && (
+        contains(github.event.head_commit.message, 'release')
+      ))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for "release" in commit message
+        if: github.event_name == 'push'
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" != *release* ]]; then
+            echo "Commit message does not contain 'release'. Failing workflow."
+            exit 1
+          else
+            echo "release action done"
+          fi
+          
