@@ -73,14 +73,20 @@
                     <button onclick="updateData()" id="updateBtn" disabled class="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm">✏️ PUT</button>
                     <button onclick="deleteData()" id="deleteBtn" disabled class="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm">🗑️ DELETE</button>
                     <button onclick="clearOutput()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm col-span-2 lg:col-span-1">🧹 CLEAR</button>
+                    <button id="cleanKeyBtn" onclick="clearStoredKey()" class="bg-red-700 hover:bg-red-800 text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm hidden col-span-2 lg:col-span-1">🧹 Clean Key</button>
                 </div>
             </div>
 
             <!-- Terminal Output -->
             <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 shadow-xl flex-1 flex flex-col min-h-0">
-                <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2 flex-shrink-0">
-                    <span class="text-green-400">💻</span> Terminal Output
-                </h2>
+                <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                    <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <span class="text-green-400">💻</span> Terminal Output
+                    </h2>
+                    <button onclick="expandTerminal()" class="text-gray-400 hover:text-green-400 transition-colors p-1 rounded" title="Expand Terminal">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                </div>
                 <div id="output" class="bg-black rounded-md p-3 flex-1 overflow-y-auto border border-gray-600 font-mono text-sm min-h-0">
                     <div class="text-green-400 mb-2">
                         <span class="text-blue-400">[i-remember]</span> 
@@ -125,6 +131,26 @@
                 <button onclick="saveJsonChanges()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors flex-1">Save Changes</button>
                 <button onclick="formatJson()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors">Beautify JSON</button>
                 <button onclick="closeJsonModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-medium transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal Fullscreen Modal -->
+    <div id="terminalModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) closeTerminalModal()">
+        <div class="bg-gray-800 rounded-lg border border-gray-700 w-full h-full max-w-6xl max-h-full shadow-xl flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b border-gray-700 flex-shrink-0">
+                <h3 class="text-2xl font-semibold text-white flex items-center gap-2">💻 Terminal Output - Fullscreen View</h3>
+                <button onclick="closeTerminalModal()" class="text-gray-400 hover:text-white text-3xl">×</button>
+            </div>
+            <div class="flex-1 p-6 overflow-hidden">
+                <div id="terminalFullscreen" class="w-full h-full bg-black rounded-md p-3 overflow-y-auto border border-gray-600 font-mono text-base">
+                    <!-- Terminal content will be copied here -->
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-700 flex gap-2 flex-shrink-0">
+                <button onclick="copyTerminalContent()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors">Copy All Content</button>
+                <button onclick="clearTerminalFullscreen()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors">Clear Terminal</button>
+                <button onclick="closeTerminalModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-medium transition-colors">Close</button>
             </div>
         </div>
     </div>
@@ -188,6 +214,7 @@
 
         function closeKeyModal() { toggleModal('keyModal', false); }
         function closeJsonModal() { toggleModal('jsonModal', false); }
+        function closeTerminalModal() { toggleModal('terminalModal', false); }
 
         function copyStoredKey() {
             const key = storage.get('i-remember-key');
@@ -235,6 +262,35 @@
             }
         }
 
+        // Terminal modal functions
+        function expandTerminal() {
+            const originalOutput = $('output');
+            const fullscreenOutput = $('terminalFullscreen');
+            fullscreenOutput.innerHTML = originalOutput.innerHTML;
+            toggleModal('terminalModal', true);
+        }
+
+        function copyTerminalContent() {
+            const content = $('terminalFullscreen').innerText;
+            navigator.clipboard.writeText(content).then(
+                () => addToOutput('Terminal content copied to clipboard', 'success'),
+                () => addToOutput('Failed to copy terminal content to clipboard', 'error')
+            );
+        }
+
+        function clearTerminalFullscreen() {
+            const fullscreenOutput = $('terminalFullscreen');
+            fullscreenOutput.innerHTML = `
+                <div class="text-green-400 mb-2">
+                    <span class="text-blue-400">[i-remember]</span> 
+                    <span class="text-cyan-400">user@terminal</span>
+                    <span class="text-white">:~$</span> 
+                    <span class="text-gray-300">Terminal cleared</span>
+                </div>
+            `;
+            clearOutput();
+        }
+
         // Output functions
         function addToOutput(text, type = 'info') {
             const output = $('output');
@@ -276,7 +332,6 @@
         function updateButtons() {
             const hasKey = currentKey !== null;
             ['getBtn', 'updateBtn', 'deleteBtn'].forEach(id => $(id).disabled = !hasKey);
-            
             const keyDisplay = $('keyDisplay');
             if (hasKey) {
                 keyDisplay.classList.remove('hidden');
@@ -284,6 +339,12 @@
             } else {
                 keyDisplay.classList.add('hidden');
             }
+            showCleanKeyButton(false);
+        }
+
+        function showCleanKeyButton(show) {
+            const btn = $('cleanKeyBtn');
+            if (btn) btn.classList.toggle('hidden', !show);
         }
 
         // API functions
@@ -297,9 +358,16 @@
 
                 addToOutput(`${method} ${BASE_URL}${endpoint}`, 'request');
                 const response = await fetch(`${BASE_URL}${endpoint}`, config);
-                const data = await response.json();
-                
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    data = {};
+                }
                 addToOutput(`${response.status}: ${JSON.stringify(data, null, 2)}`, response.ok ? 'response' : 'error');
+                if (response.status === 401) {
+                    showCleanKeyButton(true);
+                }
                 return { response, data };
             } catch (error) {
                 addToOutput(`Network Error: ${error.message}`, 'error');

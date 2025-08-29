@@ -46,12 +46,12 @@ async def add(request: Request, request_data: POSTRequest):
     try:
         # Check if the client IP already exists
         read_data = await xSupaBase.read_sdoc("i-remember", select="client_ip", filters={"client_ip": new_data["client_ip"]})
-        if read_data and read_data.get('data'):
-            raise HTTPException(status_code=400, detail="You can only create one document.")
+        if read_data.get('count', 0) >= 2:
+            raise HTTPException(status_code=400, detail="You can only create two documents.")
     except Exception as e:
-        if "Response data is empty" not in str(e) and "You can only create one document" not in str(e):
+        if "Response data is empty" not in str(e) and "You can only create two document" not in str(e):
             raise HTTPException(status_code=500, detail=str(e))
-        elif "You can only create one document" in str(e):
+        elif "You can only create two document" in str(e):
             raise e
     
     try:
