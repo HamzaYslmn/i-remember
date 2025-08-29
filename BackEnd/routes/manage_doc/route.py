@@ -44,8 +44,13 @@ async def add(request: Request, request_data: POSTRequest):
     }
     
     try:
-        # Check if the client IP already exists
-        read_data = await xSupaBase.read_sdoc("i-remember", select="client_ip", filters={"client_ip": new_data["client_ip"]})
+        # Optimized: Only select count to check limit, don't fetch full data
+        read_data = await xSupaBase.read_sdoc(
+            "i-remember", 
+            select="uuid",  # Only select minimal field for counting
+            filters={"client_ip": new_data["client_ip"]},
+            limit=3  # We only need to know if there are 2 or more
+        )
         if read_data.get('count', 0) >= 2:
             raise HTTPException(status_code=400, detail="You can only create two documents.")
     except Exception as e:
@@ -72,13 +77,12 @@ async def get(request: Request):
     decoded_jwt = await validate_access(request.state.auth)
     doc_uuid = decoded_jwt["data"]
     try:
-        read_data = (await xSupaBase.read_sdoc("i-remember", doc_id=[doc_uuid]))['data'][0]
-        print(read_data)
-
-        # Remove unwanted fields from response
-        if read_data:
-            read_data.pop('uuid', None)
-            read_data.pop('client_ip', None)
+        # Only select needed fields to reduce data transfer and processing
+        read_data = (await xSupaBase.read_sdoc(
+            "i-remember", 
+            doc_id=[doc_uuid],
+            select="data,valid,created_at"  # Exclude uuid and client_ip from query
+        ))['data'][0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
