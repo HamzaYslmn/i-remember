@@ -82,11 +82,6 @@ async def get(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-    try:
-        await xSupaBase.update_sdoc("i-remember", doc_id=doc_uuid, data={"valid": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)).isoformat()})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
     return JSONResponse(status_code=200, content={"detail": read_data})
 
 # --------------------------------------------------    PUT    --------------------------------------------------
