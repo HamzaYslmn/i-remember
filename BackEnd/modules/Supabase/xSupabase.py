@@ -119,7 +119,6 @@ if __name__ == "__main__":
                     "tags": ["test", "example"]
                 },
                 "valid": (datetime.datetime.now() + datetime.timedelta(days=7)).isoformat(),
-                "api-key": "test-api-key-123"
             }
             doc_uuid = await create_sdoc("i-remember", new_data)
             print(f"Created document with UUID: {doc_uuid}")
@@ -147,18 +146,6 @@ if __name__ == "__main__":
                 limit=5
             )
             print(f"Filtered documents found: {len(filtered_docs['data'])}")
-            
-            # READ - Filter by spesific
-            print("\n=== READ WITH SPECIFIC FILTER EXAMPLE ===")
-            filtered_docs = await read_sdoc(
-                "i-remember", 
-                filters={
-                    "data.title": ["aaa", "ccc"],
-                    "api-key": ["ccc"]
-                },
-                limit=5
-            )
-            print(f"Filtered documents found: {filtered_docs['data']}")
             
             import time
             time.sleep(30)
