@@ -18,7 +18,7 @@ async def verify_jwt_token(request_token):
         raise Exception("Token Problem")
     
 async def generate_jwt_token(data, exp):
-    # Generate a new JWT token with a 7-day expiration.
+    # Generate a new JWT token with a expiration.
     expiration = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=exp)
     token_payload = {
         "verified": True,
@@ -31,7 +31,7 @@ async def generate_jwt_token(data, exp):
 if __name__ == "__main__":
     import asyncio
     async def main():
-        generated_token = await generate_jwt_token("test")
+        generated_token = await generate_jwt_token("test", 1)
         print(generated_token)
 
         decoded_payload = await verify_jwt_token(generated_token)
