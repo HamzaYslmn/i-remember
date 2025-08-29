@@ -25,7 +25,7 @@ async def validate_access(jwt: str):
         decoded_jwt = await xJWT.verify_jwt_token(jwt)
         return decoded_jwt
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid Auth")
+        raise HTTPException(status_code=401, detail=str(e))
 
 # --------------------------------------------------    POST    --------------------------------------------------
     
