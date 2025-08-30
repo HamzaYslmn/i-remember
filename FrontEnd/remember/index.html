@@ -20,12 +20,15 @@
     </script>
     <style>
         body { height: 100dvh; overflow: hidden; }
-        .app-container { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+        .app-container { 
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+            padding-bottom: 0;
+        }
     </style>
 </head>
 <body class="dark bg-gray-900 font-mono text-sm">
     <div class="app-container h-full flex flex-col">
-        <div class="flex-1 flex flex-col p-4 max-w-6xl mx-auto w-full min-h-0">
+        <div class="flex-1 flex flex-col p-4 max-w-6xl mx-auto w-full min-h-0 pb-0">
             <!-- Header -->
             <div class="mb-4">
                 <div class="flex items-center gap-2 mb-1">
@@ -62,12 +65,12 @@
                                 <div id="key1Container" class="flex items-center gap-2 hidden">
                                     <input type="radio" id="key1Radio" name="keySelection" value="0" class="text-blue-600" onchange="selectKey(0)">
                                     <label for="key1Radio" class="text-xs text-yellow-400 font-mono flex-1 truncate cursor-pointer" id="key1Label">Key 1</label>
-                                    <button onclick="deleteStoredKey(0)" class="text-red-400 hover:text-red-300 text-xs px-1" title="Delete Key 1">🗑️</button>
+                                    <button id="key1ErrorBtn" onclick="deleteStoredKey(0)" class="text-red-400 hover:text-red-300 text-xs px-1 hidden" title="Delete Key 1 (401 Error)">🗑️</button>
                                 </div>
                                 <div id="key2Container" class="flex items-center gap-2 hidden">
                                     <input type="radio" id="key2Radio" name="keySelection" value="1" class="text-blue-600" onchange="selectKey(1)">
                                     <label for="key2Radio" class="text-xs text-yellow-400 font-mono flex-1 truncate cursor-pointer" id="key2Label">Key 2</label>
-                                    <button onclick="deleteStoredKey(1)" class="text-red-400 hover:text-red-300 text-xs px-1" title="Delete Key 2">🗑️</button>
+                                    <button id="key2ErrorBtn" onclick="deleteStoredKey(1)" class="text-red-400 hover:text-red-300 text-xs px-1 hidden" title="Delete Key 2 (401 Error)">🗑️</button>
                                 </div>
                             </div>
                         </div>
@@ -86,7 +89,6 @@
                     <button onclick="updateData()" id="updateBtn" disabled class="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm">✏️ PUT</button>
                     <button onclick="deleteData()" id="deleteBtn" disabled class="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm">🗑️ DELETE</button>
                     <button onclick="clearOutput()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm col-span-2 lg:col-span-1">🧹 CLEAR</button>
-                    <button id="cleanKeyBtn" onclick="clearAllStoredKeys()" class="bg-red-700 hover:bg-red-800 text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm hidden col-span-2 lg:col-span-1">🧹 Clean Key</button>
                 </div>
             </div>
 
@@ -111,6 +113,13 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Footer -->
+        <footer class="text-center py-2 px-4 flex-shrink-0">
+            <p class="text-xs text-slate-400">
+                by <a href="https://github.com/HamzaYslmn/i-remember" target="_blank" class="text-blue-500 hover:text-blue-600">HamzaYslmn</a>
+            </p>
+        </footer>
     </div>
 
     <!-- Key Display Modal -->
@@ -185,6 +194,7 @@
         let currentKey = null;
         let currentKeyIndex = -1;
         let storedKeys = [];
+        let keyErrors = []; // Track which keys have 401 errors
 
         // Utility functions
         const $ = (id) => document.getElementById(id);
@@ -222,6 +232,7 @@
                 return false;
             }
             storedKeys.push(key);
+            keyErrors.push(false); // New keys start without errors
             currentKeyIndex = storedKeys.length - 1;
             currentKey = key;
             saveStoredKeys();
@@ -241,6 +252,7 @@
         function deleteStoredKey(index) {
             if (index >= 0 && index < storedKeys.length) {
                 storedKeys.splice(index, 1);
+                keyErrors.splice(index, 1); // Remove error status for deleted key
                 if (currentKeyIndex === index) {
                     if (storedKeys.length > 0) {
                         currentKeyIndex = Math.min(currentKeyIndex, storedKeys.length - 1);
@@ -290,6 +302,7 @@
             const oldKey = storage.get('i-remember-key');
             if (oldKey && !storage.get('i-remember-keys')) {
                 storedKeys = [oldKey];
+                keyErrors = [false];
                 currentKeyIndex = 0;
                 currentKey = oldKey;
                 saveStoredKeys();
@@ -297,6 +310,10 @@
                 addToOutput('Migrated existing key to new multi-key system', 'success');
             } else {
                 loadStoredKeys();
+                // Initialize keyErrors array if not already present
+                if (keyErrors.length < storedKeys.length) {
+                    keyErrors = new Array(storedKeys.length).fill(false);
+                }
                 if (currentKey) addToOutput(`Restored ${storedKeys.length} saved authorization key(s)`, 'success');
             }
             updateButtons();
@@ -313,10 +330,12 @@
             const key1Container = $('key1Container');
             const key1Label = $('key1Label');
             const key1Radio = $('key1Radio');
+            const key1ErrorBtn = $('key1ErrorBtn');
             if (storedKeys.length > 0) {
                 key1Container.classList.remove('hidden');
                 key1Label.textContent = storedKeys[0].substring(0, 20) + '...';
                 key1Radio.checked = currentKeyIndex === 0;
+                key1ErrorBtn.classList.toggle('hidden', !keyErrors[0]);
             } else {
                 key1Container.classList.add('hidden');
             }
@@ -325,10 +344,12 @@
             const key2Container = $('key2Container');
             const key2Label = $('key2Label');
             const key2Radio = $('key2Radio');
+            const key2ErrorBtn = $('key2ErrorBtn');
             if (storedKeys.length > 1) {
                 key2Container.classList.remove('hidden');
                 key2Label.textContent = storedKeys[1].substring(0, 20) + '...';
                 key2Radio.checked = currentKeyIndex === 1;
+                key2ErrorBtn.classList.toggle('hidden', !keyErrors[1]);
             } else {
                 key2Container.classList.add('hidden');
             }
@@ -386,6 +407,7 @@
 
         function clearAllStoredKeys() {
             storedKeys = [];
+            keyErrors = [];
             currentKey = null;
             currentKeyIndex = -1;
             storage.remove('i-remember-keys');
@@ -494,12 +516,6 @@
         function updateButtons() {
             const hasKey = currentKey !== null;
             ['getBtn', 'updateBtn', 'deleteBtn'].forEach(id => $(id).disabled = !hasKey);
-            showCleanKeyButton(false);
-        }
-
-        function showCleanKeyButton(show) {
-            const btn = $('cleanKeyBtn');
-            if (btn) btn.classList.toggle('hidden', !show);
         }
 
         // API functions
@@ -520,9 +536,20 @@
                     data = {};
                 }
                 addToOutput(`${response.status}: ${JSON.stringify(data, null, 2)}`, response.ok ? 'response' : 'error');
-                if (response.status === 401) {
-                    showCleanKeyButton(true);
+                
+                // Handle authentication status
+                if (currentKeyIndex >= 0) {
+                    if (response.status === 401) {
+                        keyErrors[currentKeyIndex] = true;
+                        updateKeySelectionDisplay();
+                        addToOutput(`Key ${currentKeyIndex + 1} returned 401 error - trash icon enabled`, 'error');
+                    } else if (response.ok) {
+                        // Clear error status on successful response
+                        keyErrors[currentKeyIndex] = false;
+                        updateKeySelectionDisplay();
+                    }
                 }
+                
                 return { response, data };
             } catch (error) {
                 addToOutput(`Network Error: ${error.message}`, 'error');
