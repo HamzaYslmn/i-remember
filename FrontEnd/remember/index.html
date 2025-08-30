@@ -55,10 +55,20 @@
                         <label class="block text-sm font-medium text-cyan-400 mb-2">Valid Duration (1-10080 minutes)</label>
                         <input type="number" id="validInput" value="1" min="1" max="10080" class="w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-green-400 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" oninput="validateDuration(this)">
                         <div id="durationWarning" class="mt-1 text-red-400 text-xs hidden">Duration must be between 1 minute and 10080 minutes (1 week)</div>
-                        <div id="keyDisplay" class="mt-4 hidden">
-                            <label class="block text-sm font-medium text-cyan-400 mb-2">Current Authorization Key</label>
-                            <div class="bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-yellow-400 font-mono text-xs break-all">
-                                <span id="currentKey"></span>
+                        
+                        <div id="keySelectionDisplay" class="mt-4 hidden">
+                            <label class="block text-sm font-medium text-cyan-400 mb-2">Select Active Key (2 max)</label>
+                            <div class="space-y-2">
+                                <div id="key1Container" class="flex items-center gap-2 hidden">
+                                    <input type="radio" id="key1Radio" name="keySelection" value="0" class="text-blue-600" onchange="selectKey(0)">
+                                    <label for="key1Radio" class="text-xs text-yellow-400 font-mono flex-1 truncate cursor-pointer" id="key1Label">Key 1</label>
+                                    <button onclick="deleteStoredKey(0)" class="text-red-400 hover:text-red-300 text-xs px-1" title="Delete Key 1">🗑️</button>
+                                </div>
+                                <div id="key2Container" class="flex items-center gap-2 hidden">
+                                    <input type="radio" id="key2Radio" name="keySelection" value="1" class="text-blue-600" onchange="selectKey(1)">
+                                    <label for="key2Radio" class="text-xs text-yellow-400 font-mono flex-1 truncate cursor-pointer" id="key2Label">Key 2</label>
+                                    <button onclick="deleteStoredKey(1)" class="text-red-400 hover:text-red-300 text-xs px-1" title="Delete Key 2">🗑️</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -76,7 +86,7 @@
                     <button onclick="updateData()" id="updateBtn" disabled class="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm">✏️ PUT</button>
                     <button onclick="deleteData()" id="deleteBtn" disabled class="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm">🗑️ DELETE</button>
                     <button onclick="clearOutput()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm col-span-2 lg:col-span-1">🧹 CLEAR</button>
-                    <button id="cleanKeyBtn" onclick="clearStoredKey()" class="bg-red-700 hover:bg-red-800 text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm hidden col-span-2 lg:col-span-1">🧹 Clean Key</button>
+                    <button id="cleanKeyBtn" onclick="clearAllStoredKeys()" class="bg-red-700 hover:bg-red-800 text-white px-3 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-1 text-sm hidden col-span-2 lg:col-span-1">🧹 Clean Key</button>
                 </div>
             </div>
 
@@ -105,17 +115,29 @@
 
     <!-- Key Display Modal -->
     <div id="keyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target===this) closeKeyModal()">
-        <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-md w-full shadow-xl">
+        <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-lg w-full shadow-xl">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-white flex items-center gap-2">🔐 Stored Authorization Key</h3>
+                <h3 class="text-lg font-semibold text-white flex items-center gap-2">🔐 Stored Authorization Keys</h3>
                 <button onclick="closeKeyModal()" class="text-gray-400 hover:text-white text-xl">×</button>
             </div>
-            <div class="bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-yellow-400 font-mono text-xs break-all mb-4">
-                <span id="storedKeyDisplay">No key stored</span>
+            <div class="space-y-3 mb-4">
+                <div id="storedKey1Container" class="hidden">
+                    <label class="block text-sm text-gray-400 mb-1">Key 1:</label>
+                    <div class="bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-yellow-400 font-mono text-xs break-all">
+                        <span id="storedKey1Display">No key stored</span>
+                    </div>
+                </div>
+                <div id="storedKey2Container" class="hidden">
+                    <label class="block text-sm text-gray-400 mb-1">Key 2:</label>
+                    <div class="bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-yellow-400 font-mono text-xs break-all">
+                        <span id="storedKey2Display">No key stored</span>
+                    </div>
+                </div>
+                <div id="noKeysMessage" class="text-center text-gray-400">No keys stored</div>
             </div>
             <div class="flex gap-2">
-                <button onclick="copyStoredKey()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors flex-1 text-sm">Copy Key</button>
-                <button onclick="clearStoredKey()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors flex-1 text-sm">Clear Key</button>
+                <button onclick="copyActiveKey()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors flex-1 text-sm">Copy Active Key</button>
+                <button onclick="clearAllStoredKeys()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors flex-1 text-sm">Clear All Keys</button>
             </div>
         </div>
     </div>
@@ -161,6 +183,8 @@
     <script>
         const BASE_URL = "/api";
         let currentKey = null;
+        let currentKeyIndex = -1;
+        let storedKeys = [];
 
         // Utility functions
         const $ = (id) => document.getElementById(id);
@@ -169,6 +193,71 @@
             set: (key, value) => localStorage.setItem(key, value),
             remove: (key) => localStorage.removeItem(key)
         };
+
+        // Key management functions
+        function loadStoredKeys() {
+            const keysJson = storage.get('i-remember-keys');
+            storedKeys = keysJson ? JSON.parse(keysJson) : [];
+            if (storedKeys.length > 0) {
+                currentKeyIndex = parseInt(storage.get('i-remember-active-key-index')) || 0;
+                if (currentKeyIndex < storedKeys.length) {
+                    currentKey = storedKeys[currentKeyIndex];
+                } else {
+                    currentKeyIndex = 0;
+                    currentKey = storedKeys[0];
+                }
+            }
+        }
+
+        function saveStoredKeys() {
+            storage.set('i-remember-keys', JSON.stringify(storedKeys));
+            if (currentKeyIndex >= 0) {
+                storage.set('i-remember-active-key-index', currentKeyIndex.toString());
+            }
+        }
+
+        function addNewKey(key) {
+            if (storedKeys.length >= 2) {
+                addToOutput('Maximum 2 keys allowed. Delete an existing key first.', 'error');
+                return false;
+            }
+            storedKeys.push(key);
+            currentKeyIndex = storedKeys.length - 1;
+            currentKey = key;
+            saveStoredKeys();
+            return true;
+        }
+
+        function selectKey(index) {
+            if (index >= 0 && index < storedKeys.length) {
+                currentKeyIndex = index;
+                currentKey = storedKeys[index];
+                storage.set('i-remember-active-key-index', index.toString());
+                updateButtons();
+                addToOutput(`Switched to Key ${index + 1}`, 'success');
+            }
+        }
+
+        function deleteStoredKey(index) {
+            if (index >= 0 && index < storedKeys.length) {
+                storedKeys.splice(index, 1);
+                if (currentKeyIndex === index) {
+                    if (storedKeys.length > 0) {
+                        currentKeyIndex = Math.min(currentKeyIndex, storedKeys.length - 1);
+                        currentKey = storedKeys[currentKeyIndex];
+                    } else {
+                        currentKeyIndex = -1;
+                        currentKey = null;
+                    }
+                } else if (currentKeyIndex > index) {
+                    currentKeyIndex--;
+                }
+                saveStoredKeys();
+                updateButtons();
+                updateKeySelectionDisplay();
+                addToOutput(`Key ${index + 1} deleted`, 'success');
+            }
+        }
 
         // Validation functions
         function validateDuration(input) {
@@ -197,10 +286,52 @@
 
         // Initialize app
         function init() {
-            currentKey = storage.get('i-remember-key');
-            if (currentKey) addToOutput('Restored saved authorization key', 'success');
+            // Migrate from old single key storage
+            const oldKey = storage.get('i-remember-key');
+            if (oldKey && !storage.get('i-remember-keys')) {
+                storedKeys = [oldKey];
+                currentKeyIndex = 0;
+                currentKey = oldKey;
+                saveStoredKeys();
+                storage.remove('i-remember-key');
+                addToOutput('Migrated existing key to new multi-key system', 'success');
+            } else {
+                loadStoredKeys();
+                if (currentKey) addToOutput(`Restored ${storedKeys.length} saved authorization key(s)`, 'success');
+            }
             updateButtons();
+            updateKeySelectionDisplay();
             $('dataInput').value = '{"location": "Istanbul"}';
+        }
+
+        // UI update functions
+        function updateKeySelectionDisplay() {
+            const hasKeys = storedKeys.length > 0;
+            $('keySelectionDisplay').classList.toggle('hidden', !hasKeys);
+            
+            // Update key 1
+            const key1Container = $('key1Container');
+            const key1Label = $('key1Label');
+            const key1Radio = $('key1Radio');
+            if (storedKeys.length > 0) {
+                key1Container.classList.remove('hidden');
+                key1Label.textContent = storedKeys[0].substring(0, 20) + '...';
+                key1Radio.checked = currentKeyIndex === 0;
+            } else {
+                key1Container.classList.add('hidden');
+            }
+            
+            // Update key 2
+            const key2Container = $('key2Container');
+            const key2Label = $('key2Label');
+            const key2Radio = $('key2Radio');
+            if (storedKeys.length > 1) {
+                key2Container.classList.remove('hidden');
+                key2Label.textContent = storedKeys[1].substring(0, 20) + '...';
+                key2Radio.checked = currentKeyIndex === 1;
+            } else {
+                key2Container.classList.add('hidden');
+            }
         }
 
         // Modal functions
@@ -211,7 +342,30 @@
         }
 
         function showStoredKey() {
-            $('storedKeyDisplay').textContent = storage.get('i-remember-key') || 'No key stored';
+            // Update modal content
+            const hasKeys = storedKeys.length > 0;
+            $('noKeysMessage').classList.toggle('hidden', hasKeys);
+            
+            // Show key 1
+            const key1Container = $('storedKey1Container');
+            const key1Display = $('storedKey1Display');
+            if (storedKeys.length > 0) {
+                key1Container.classList.remove('hidden');
+                key1Display.textContent = storedKeys[0];
+            } else {
+                key1Container.classList.add('hidden');
+            }
+            
+            // Show key 2
+            const key2Container = $('storedKey2Container');
+            const key2Display = $('storedKey2Display');
+            if (storedKeys.length > 1) {
+                key2Container.classList.remove('hidden');
+                key2Display.textContent = storedKeys[1];
+            } else {
+                key2Container.classList.add('hidden');
+            }
+            
             toggleModal('keyModal', true);
         }
 
@@ -219,21 +373,26 @@
         function closeJsonModal() { toggleModal('jsonModal', false); }
         function closeTerminalModal() { toggleModal('terminalModal', false); }
 
-        function copyStoredKey() {
-            const key = storage.get('i-remember-key');
-            if (key) {
-                navigator.clipboard.writeText(key).then(
-                    () => { addToOutput('Key copied to clipboard', 'success'); closeKeyModal(); },
+        function copyActiveKey() {
+            if (currentKey) {
+                navigator.clipboard.writeText(currentKey).then(
+                    () => { addToOutput('Active key copied to clipboard', 'success'); closeKeyModal(); },
                     () => addToOutput('Failed to copy key to clipboard', 'error')
                 );
+            } else {
+                addToOutput('No active key to copy', 'error');
             }
         }
 
-        function clearStoredKey() {
-            storage.remove('i-remember-key');
+        function clearAllStoredKeys() {
+            storedKeys = [];
             currentKey = null;
+            currentKeyIndex = -1;
+            storage.remove('i-remember-keys');
+            storage.remove('i-remember-active-key-index');
             updateButtons();
-            addToOutput('Stored key cleared', 'success');
+            updateKeySelectionDisplay();
+            addToOutput('All stored keys cleared', 'success');
             closeKeyModal();
         }
 
@@ -335,13 +494,6 @@
         function updateButtons() {
             const hasKey = currentKey !== null;
             ['getBtn', 'updateBtn', 'deleteBtn'].forEach(id => $(id).disabled = !hasKey);
-            const keyDisplay = $('keyDisplay');
-            if (hasKey) {
-                keyDisplay.classList.remove('hidden');
-                $('currentKey').textContent = currentKey;
-            } else {
-                keyDisplay.classList.add('hidden');
-            }
             showCleanKeyButton(false);
         }
 
@@ -399,10 +551,12 @@
             });
 
             if (result?.response.ok) {
-                currentKey = result.data.detail;
-                storage.set('i-remember-key', currentKey);
-                updateButtons();
-                addToOutput('Authorization key generated and stored', 'success');
+                const newKey = result.data.detail;
+                if (addNewKey(newKey)) {
+                    updateButtons();
+                    updateKeySelectionDisplay();
+                    addToOutput(`Authorization key generated and stored as Key ${storedKeys.length}`, 'success');
+                }
             }
         }
 
@@ -432,10 +586,8 @@
             const result = await makeRequest('DELETE', '/i-remember', { 'Authorization': currentKey }, {});
             
             if (result?.response.ok) {
-                currentKey = null;
-                storage.remove('i-remember-key');
-                updateButtons();
-                addToOutput('Data deleted and key cleared', 'success');
+                deleteStoredKey(currentKeyIndex);
+                addToOutput('Data deleted and key removed', 'success');
             }
         }
 
