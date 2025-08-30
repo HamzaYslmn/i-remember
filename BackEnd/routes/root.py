@@ -20,3 +20,14 @@ async def root():
             "the universe, and everything? 🌌"
         ),
     }
+
+@router.get("/")
+async def root():        
+    return {
+        "status": "i-remember",
+        "output": "Welcome to the HamzaYslmn API Service! 🏔️",
+        "message": (
+            "Or perhaps you're looking for the answer to the ultimate question of life, "
+            "the universe, and everything? 🌌"
+        ),
+    }
