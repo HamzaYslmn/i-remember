@@ -17,6 +17,9 @@ A temporary data storage API service that allows you to store, retrieve, update 
 ### Base URL
 [https://i-remember.onrender.com/](https://i-remember.onrender.com/)
 
+### API URL
+[https://i-remember.onrender.com/api/](https://i-remember.onrender.com/api/)
+
 ## Endpoints
 
 ### 1. Create Document
