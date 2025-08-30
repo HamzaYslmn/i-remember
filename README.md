@@ -58,7 +58,7 @@ Retrieves the stored document.
 
 ### 3. Update Document
 
-Updates the stored document and optionally extends expiration.
+Updates the stored document and optionally extends expiration. (now + minutes)
 
 **Endpoint:** `PUT /i-remember`
 
