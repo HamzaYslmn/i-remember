@@ -158,23 +158,33 @@ class UPDATERequest(BaseModel):
 async def update(request: Request, request_data: UPDATERequest):
     decoded_jwt = await validate_access(request.state.auth)
     doc_uuid = decoded_jwt["data"]
-    
+
     # Prepare update data
     update_data = request_data.model_dump(exclude_unset=True)
-    
+
+    new_key = None
     # Convert valid minutes to datetime if provided
     if 'valid' in update_data and update_data['valid'] is not None:
         update_data['valid'] = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=update_data['valid'])).isoformat()
-    
+        try:
+            new_key = await xJWT.generate_jwt_token(doc_uuid, request_data.valid)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     try:
         await xSupaBase.update_sdoc("i-remember", doc_id=doc_uuid, data=update_data)
-        
+
         # Remove from cache after successful update
         await document_cache.delete(doc_uuid)
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return JSONResponse(status_code=200, content={"detail": "Document updated successfully"})
+
+    response_content = {"detail": "Document updated successfully"}
+    if new_key:
+        response_content["key"] = new_key
+
+    return JSONResponse(status_code=200, content=response_content)
 
 # --------------------------------------------------    DELETE    --------------------------------------------------
 class DELETERequest(BaseModel):    

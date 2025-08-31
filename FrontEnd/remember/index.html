@@ -600,10 +600,21 @@
             if (!data || duration === null) return;
 
             addToOutput('Updating existing data...', 'info');
-            await makeRequest('PUT', '/i-remember', { 'Authorization': currentKey }, {
+            const result = await makeRequest('PUT', '/i-remember', { 'Authorization': currentKey }, {
                 data,
                 valid: duration
             });
+
+            // If duration > 1 and a new key is returned, replace the current key
+            if (result?.response.ok && duration > 1 && result.data && result.data.key) {
+                // Replace the current key with the new key
+                storedKeys[currentKeyIndex] = result.data.key;
+                currentKey = result.data.key;
+                saveStoredKeys();
+                updateButtons();
+                updateKeySelectionDisplay();
+                addToOutput('Authorization key updated due to duration change. Please use the new key for future requests.', 'success');
+            }
         }
 
         async function deleteData() {
