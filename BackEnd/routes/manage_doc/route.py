@@ -120,8 +120,7 @@ async def add(request: Request, request_data: POSTRequest):
 
 @router.get("")
 async def get(request: Request):
-    decoded_jwt = await validate_access(request.state.auth)
-    doc_uuid = decoded_jwt["data"]
+    doc_uuid = (await validate_access(request.state.auth))["data"]
     
     # Try to get from cache first
     cached_data = await document_cache.get(doc_uuid)
@@ -156,15 +155,11 @@ class UPDATERequest(BaseModel):
     
 @router.put("")
 async def update(request: Request, request_data: UPDATERequest):
-    decoded_jwt = await validate_access(request.state.auth)
-    doc_uuid = decoded_jwt["data"]
-
-    # Prepare update data
+    doc_uuid = (await validate_access(request.state.auth))["data"]
     update_data = request_data.model_dump(exclude_unset=True)
-
     new_key = None
-    # Convert valid minutes to datetime if provided
-    if 'valid' in update_data and update_data['valid'] is not None:
+
+    if update_data.get('valid') is not None:
         update_data['valid'] = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=update_data['valid'])).isoformat()
         try:
             new_key = await xJWT.generate_jwt_token(doc_uuid, request_data.valid)
@@ -173,18 +168,15 @@ async def update(request: Request, request_data: UPDATERequest):
 
     try:
         await xSupaBase.update_sdoc("i-remember", doc_id=doc_uuid, data=update_data)
-
-        # Remove from cache after successful update
         await document_cache.delete(doc_uuid)
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    response_content = {"detail": "Document updated successfully"}
+    content = {"detail": "Updated"}
     if new_key:
-        response_content["key"] = new_key
-
-    return JSONResponse(status_code=200, content=response_content)
+        content["detail"] = "Updated & key"
+        content["key"] = new_key
+    return JSONResponse(status_code=200, content=content)
 
 # --------------------------------------------------    DELETE    --------------------------------------------------
 class DELETERequest(BaseModel):    
@@ -192,8 +184,8 @@ class DELETERequest(BaseModel):
     
 @router.delete("")
 async def delete(request: Request, request_data: DELETERequest):
-    decoded_jwt = await validate_access(request.state.auth)
-    doc_uuid = decoded_jwt["data"]
+    doc_uuid = (await validate_access(request.state.auth))["data"]
+    
     try:
         await xSupaBase.delete_sdoc("i-remember", doc_id=doc_uuid)
         

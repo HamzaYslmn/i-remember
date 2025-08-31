@@ -29,12 +29,18 @@ if __name__ == "__main__":
         "valid": 5
     })
     
+    # 3. Update to Ankara and make valid for 5 minutes
+    print("\n=== 3. Update to Ankara (5 minutes) ===")
+    make_request("PUT", headers={"Authorization": key}, json_data={
+        "data": {"location": "Ankara"},
+    })
+    
     # 4. Get it
     print("\n=== 4. Get updated location ===")
     make_request("GET", headers={"Authorization": key})
     
     # 5. Delete it
     print("\n=== 5. Delete location ===")
-    #make_request("DELETE", headers={"Authorization": key}, json_data={})
+    make_request("DELETE", headers={"Authorization": key}, json_data={})
     
     session.close()
