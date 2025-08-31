@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from pydantic import Field, BaseModel, ConfigDict, field_validator, model_validator
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict
 import datetime
 import json
 import asyncio
@@ -11,52 +11,47 @@ import modules.Supabase.xSupabase as xSupaBase
 import modules.JWT.xJWT as xJWT
 
 router = APIRouter(
-    prefix="/i-remember",
+    prefix="/i-remember", 
     tags=["i-remember Routes"]
 )
 
-# -----------------------------------------  LRU CACHE (async-safe)  -----------------------------------------
-class _AsyncLRUCache:
-    def __init__(self, maxsize: int = 128):
-        self.maxsize = maxsize
-        # key -> (value, expires_at_utc or None)
-        self._data: "OrderedDict[str, Tuple[Dict, Optional[datetime.datetime]]]" = OrderedDict()
+# -----------------------------------------  LRU CACHE (async)  -----------------------------------------
+class AsyncLRUCache:
+    def __init__(self, max_size: int = 100):
+        self.max_size = max_size
+        self.cache = OrderedDict()
         self._lock = asyncio.Lock()
-
-    async def get(self, key: str) -> Optional[Dict]:
-        now = datetime.datetime.now(datetime.timezone.utc)
+    
+    async def get(self, key: str):
         async with self._lock:
-            item = self._data.get(key)
-            if item is None:
-                return None
-            value, expires_at = item
-            # Evict if expired
-            if expires_at is not None and expires_at <= now:
-                self._data.pop(key, None)
-                return None
-            # Mark as recently used
-            self._data.move_to_end(key, last=True)
-            return value
-
-    async def set(self, key: str, value: Dict, expires_at: Optional[datetime.datetime]) -> None:
+            if key in self.cache:
+                # Move to end (most recently used)
+                value = self.cache.pop(key)
+                self.cache[key] = value
+                return value
+            return None
+    
+    async def put(self, key: str, value: any):
         async with self._lock:
-            self._data[key] = (value, expires_at)
-            self._data.move_to_end(key, last=True)
-            # Evict LRU if over capacity
-            while len(self._data) > self.maxsize:
-                self._data.popitem(last=False)
-
-    async def delete(self, key: str) -> None:
+            if key in self.cache:
+                # Update existing key
+                self.cache.pop(key)
+            elif len(self.cache) >= self.max_size:
+                # Remove least recently used item
+                self.cache.popitem(last=False)
+            
+            self.cache[key] = value
+    
+    async def delete(self, key: str):
         async with self._lock:
-            self._data.pop(key, None)
-
-    async def clear(self) -> None:
+            self.cache.pop(key, None)
+    
+    async def clear(self):
         async with self._lock:
-            self._data.clear()
+            self.cache.clear()
 
-# Tunable size if you want; kept small and local to this router/module.
-_CACHE_MAXSIZE = 128
-_ir_cache = _AsyncLRUCache(maxsize=_CACHE_MAXSIZE)
+# Initialize cache instance
+document_cache = AsyncLRUCache(max_size=100)
 
 # -----------------------------------------  MODELS  -----------------------------------------
 
@@ -74,11 +69,11 @@ async def validate_access(jwt: str):
         raise HTTPException(status_code=401, detail=str(e))
 
 # --------------------------------------------------    POST    --------------------------------------------------
-
+    
 class POSTRequest(BaseModel):
     data: Dict = Field(..., description="Data to be stored")
     valid: int = Field(1, description="Expiration date in minutes 1 minute to 7 days", ge=1, le=10080)
-
+    
     model_config = ConfigDict(extra="forbid")
 
 @router.post("")
@@ -88,11 +83,11 @@ async def add(request: Request, request_data: POSTRequest):
         "valid": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=request_data.valid)).isoformat(),
         "client_ip": request.client.host if request.client else "Unknown"
     }
-
+    
     try:
         # Optimized: Only select count to check limit, don't fetch full data
         read_data = await xSupaBase.read_sdoc(
-            "i-remember",
+            "i-remember", 
             select="uuid",  # Only select minimal field for counting
             filters={"client_ip": new_data["client_ip"]},
             limit=3  # We only need to know if there are 2 or more
@@ -104,12 +99,12 @@ async def add(request: Request, request_data: POSTRequest):
             raise HTTPException(status_code=500, detail=str(e))
         elif "You can only create two document" in str(e):
             raise e
-
+    
     try:
         uuid = await xSupaBase.create_sdoc("i-remember", data=new_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+    
     try:
         key = await xJWT.generate_jwt_token(uuid, request_data.valid)
     except Exception as e:
@@ -122,32 +117,26 @@ async def add(request: Request, request_data: POSTRequest):
 async def get(request: Request):
     decoded_jwt = await validate_access(request.state.auth)
     doc_uuid = decoded_jwt["data"]
-
-    # Attempt cache first
-    cached = await _ir_cache.get(doc_uuid)
-    if cached is not None:
-        return JSONResponse(status_code=200, content={"detail": cached})
-
+    
+    # Try to get from cache first
+    cached_data = await document_cache.get(doc_uuid)
+    if cached_data is not None:
+        return JSONResponse(status_code=200, content={"detail": cached_data})
+    
     try:
         # Only select needed fields to reduce data transfer and processing
         read_data = (await xSupaBase.read_sdoc(
-            "i-remember",
+            "i-remember", 
             doc_id=[doc_uuid],
             select="data,valid,created_at"  # Exclude uuid and client_ip from query
         ))['data'][0]
+        
+        # Cache the retrieved data
+        await document_cache.put(doc_uuid, read_data)
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-    # Parse expiry from 'valid' ISO string; store with cache entry
-    expires_at: Optional[datetime.datetime] = None
-    valid_str = read_data.get("valid")
-    if isinstance(valid_str, str):
-        try:
-            expires_at = datetime.datetime.fromisoformat(valid_str)
-        except Exception:
-            expires_at = None  # If parsing fails, fall back to no-expiry cache
-
-    await _ir_cache.set(doc_uuid, read_data, expires_at)
+    
     return JSONResponse(status_code=200, content={"detail": read_data})
 
 # --------------------------------------------------    PUT    --------------------------------------------------
@@ -157,44 +146,43 @@ class UPDATERequest(BaseModel):
     valid: Optional[int] = Field(None, description="Expiration date in minutes 1 minute to 7 days", ge=1, le=10080)
 
     model_config = ConfigDict(extra="ignore")
-
+    
 @router.put("")
 async def update(request: Request, request_data: UPDATERequest):
     decoded_jwt = await validate_access(request.state.auth)
     doc_uuid = decoded_jwt["data"]
-
+    
     # Prepare update data
     update_data = request_data.model_dump(exclude_unset=True)
-
+    
     # Convert valid minutes to datetime if provided
     if 'valid' in update_data and update_data['valid'] is not None:
         update_data['valid'] = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=update_data['valid'])).isoformat()
-
+    
     try:
         await xSupaBase.update_sdoc("i-remember", doc_id=doc_uuid, data=update_data)
+        
+        # Remove from cache after successful update
+        await document_cache.delete(doc_uuid)
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-    # Invalidate cache for this doc after successful update
-    await _ir_cache.delete(doc_uuid)
-
     return JSONResponse(status_code=200, content={"detail": "Document updated successfully"})
 
 # --------------------------------------------------    DELETE    --------------------------------------------------
-
-class DELETERequest(BaseModel):
+class DELETERequest(BaseModel):    
     model_config = ConfigDict(extra="ignore")
-
+    
 @router.delete("")
 async def delete(request: Request, request_data: DELETERequest):
     decoded_jwt = await validate_access(request.state.auth)
     doc_uuid = decoded_jwt["data"]
     try:
         await xSupaBase.delete_sdoc("i-remember", doc_id=doc_uuid)
+        
+        # Remove from cache after successful deletion
+        await document_cache.delete(doc_uuid)
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-    # Invalidate cache for this doc after successful delete
-    await _ir_cache.delete(doc_uuid)
-
     return JSONResponse(status_code=200, content={"detail": "Document deleted successfully"})
