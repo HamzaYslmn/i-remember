@@ -19,33 +19,38 @@ router = APIRouter(
 class AsyncLRUCache:
     def __init__(self, max_size: int = 100):
         self.max_size = max_size
-        self.cache = OrderedDict()
+        self.cache = OrderedDict()  # key: (value, expiry)
         self._lock = asyncio.Lock()
-    
+
     async def get(self, key: str):
         async with self._lock:
-            if key in self.cache:
-                # Move to end (most recently used)
-                value = self.cache.pop(key)
-                self.cache[key] = value
-                return value
-            return None
-    
-    async def put(self, key: str, value: any):
+            item = self.cache.get(key)
+            if not item:
+                return None
+            value, expiry = item
+            if expiry and datetime.datetime.now(datetime.timezone.utc) >= expiry:
+                self.cache.pop(key, None)
+                return None
+            self.cache.move_to_end(key)
+            return value
+
+    async def put(self, key: str, value: any, expiry: str = None):
         async with self._lock:
+            if expiry:
+                if isinstance(expiry, str):
+                    expiry = datetime.datetime.fromisoformat(expiry.replace('Z', '+00:00'))
+            else:
+                expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=1)
             if key in self.cache:
-                # Update existing key
                 self.cache.pop(key)
             elif len(self.cache) >= self.max_size:
-                # Remove least recently used item
                 self.cache.popitem(last=False)
-            
-            self.cache[key] = value
-    
+            self.cache[key] = (value, expiry)
+
     async def delete(self, key: str):
         async with self._lock:
             self.cache.pop(key, None)
-    
+
     async def clear(self):
         async with self._lock:
             self.cache.clear()
@@ -131,8 +136,10 @@ async def get(request: Request):
             select="data,valid,created_at"  # Exclude uuid and client_ip from query
         ))['data'][0]
         
-        # Cache the retrieved data
-        await document_cache.put(doc_uuid, read_data)
+        # Cache the retrieved data with its validity period
+        validity_time = read_data.get('valid', 1)
+        if validity_time:
+            await document_cache.put(doc_uuid, read_data, validity_time)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
