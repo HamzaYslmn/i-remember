@@ -174,7 +174,7 @@ async def update(request: Request, request_data: UPDATERequest):
 
     content = {"detail": "Updated"}
     if new_key:
-        content["detail"] = "Updated & key"
+        content["detail"] = f"Updated & Time +{request_data.valid} minutes"
         content["key"] = new_key
     return JSONResponse(status_code=200, content=content)
 
