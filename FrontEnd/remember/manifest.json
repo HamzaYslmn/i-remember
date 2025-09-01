@@ -12,9 +12,9 @@
   "categories": ["productivity", "utilities", "developer"],
   "icons": [
     {
-      "src": "./favicon.png",
+      "src": "./icons/favicon.ico",
       "sizes": "32x32",
-      "type": "image/png",
+      "type": "image/x-icon",
       "purpose": "any"
     },
     {
