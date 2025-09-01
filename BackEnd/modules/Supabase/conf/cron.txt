@@ -1,10 +1,10 @@
-# Geçerliliği geçmiş kayıtları sil
+# Geçerliliği geçmiş kayıtları sil, manuel
 DELETE FROM public."i-remember"
 WHERE "valid" < (now() AT TIME ZONE 'utc');
 
 
-# 5 dakikada bir geçerliliği geçmiş kayıtları sil, cron job oluştur
-SELECT cron.schedule('*/5 * * * *', $$
+# Cron, 1 dakikada bir geçerliliği geçmiş kayıtları sil
+SELECT cron.schedule('*/1 * * * *', $$
     DELETE FROM public."i-remember"
     WHERE "valid" < (now() AT TIME ZONE 'utc');
 $$);
