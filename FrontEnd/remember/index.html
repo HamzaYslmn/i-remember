@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="API Testing Terminal and smart data manager for developers and testers.">
+    <meta name="theme-color" content="#0ea5e9">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="i-remember">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>i-remember - API Terminal</title>
+    <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/png" href="./favicon.png">
     <link rel="shortcut icon" type="image/png" href="./favicon.png">
     <link rel="apple-touch-icon" href="./favicon.png">
@@ -23,6 +30,31 @@
         .app-container { 
             padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
             padding-bottom: 0;
+        }
+        
+        /* PWA specific styles */
+        @media (display-mode: standalone) {
+            body {
+                -webkit-user-select: none;
+                user-select: none;
+                -webkit-touch-callout: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+        }
+        
+        /* Better touch targets for mobile */
+        button, input, textarea {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Prevent zoom on input focus */
+        input[type="text"], input[type="number"], textarea {
+            font-size: 16px;
+        }
+        
+        /* Smooth scrolling for terminal */
+        #output, #terminalFullscreen {
+            scroll-behavior: smooth;
         }
     </style>
 </head>
@@ -631,6 +663,44 @@
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', init);
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                        addToOutput('PWA service worker registered successfully', 'success');
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                        addToOutput('PWA service worker registration failed', 'error');
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install notification
+            addToOutput('💡 App can be installed! Look for install option in your browser menu.', 'info');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            addToOutput('✅ App installed successfully!', 'success');
+            deferredPrompt = null;
+        });
+
+        // Handle PWA standalone mode
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                addToOutput('🚀 Running in PWA standalone mode', 'success');
+            }
+        });
     </script>
 </body>
 </html>
