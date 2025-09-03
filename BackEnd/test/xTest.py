@@ -5,6 +5,9 @@ BASE_URL = "http://localhost:8001/api"
 session = requests.Session()
 
 def make_request(method, endpoint="/i-remember", headers=None, json_data=None):
+    # Add Bearer prefix to Authorization header if present
+    if headers and "Authorization" in headers:
+        headers["Authorization"] = f"Bearer {headers['Authorization']}"
     response = session.request(method, f"{BASE_URL}{endpoint}", headers=headers, json=json_data)
     print(f"{method} {response.status_code}: {response.json()}")
     return response

@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 from pydantic import Field, BaseModel, ConfigDict, field_validator, model_validator
 from typing import List, Optional, Dict
@@ -14,6 +16,8 @@ router = APIRouter(
     prefix="/i-remember", 
     tags=["i-remember Routes"]
 )
+
+security = HTTPBearer()
 
 # -----------------------------------------  LRU CACHE (async)  -----------------------------------------
 class AsyncLRUCache:
@@ -76,7 +80,7 @@ async def validate_access(jwt: str):
 # --------------------------------------------------    POST    --------------------------------------------------
     
 class POSTRequest(BaseModel):
-    data: Dict = Field(..., description="Data to be stored")
+    data: Dict = Field(..., description="Data to be stored", example={"note": "This is a sample note"})
     valid: int = Field(1, description="Expiration date in minutes 1 minute to 7 days", ge=1, le=10080)
     
     model_config = ConfigDict(extra="forbid")
@@ -119,8 +123,12 @@ async def add(request: Request, request_data: POSTRequest):
 # --------------------------------------------------    GET    --------------------------------------------------
 
 @router.get("")
-async def get(request: Request):
-    doc_uuid = (await validate_access(request.state.auth))["data"]
+async def get(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    auth_header = credentials.credentials
+    doc_uuid = (await validate_access(auth_header))["data"]
     
     # Try to get from cache first
     cached_data = await document_cache.get(doc_uuid)
@@ -153,9 +161,15 @@ class UPDATERequest(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
     
+
 @router.put("")
-async def update(request: Request, request_data: UPDATERequest):
-    doc_uuid = (await validate_access(request.state.auth))["data"]
+async def update(
+    request: Request,
+    request_data: UPDATERequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    auth_header = credentials.credentials
+    doc_uuid = (await validate_access(auth_header))["data"]
     update_data = request_data.model_dump(exclude_unset=True)
     new_key = None
 
@@ -182,16 +196,19 @@ async def update(request: Request, request_data: UPDATERequest):
 class DELETERequest(BaseModel):    
     model_config = ConfigDict(extra="ignore")
     
+
 @router.delete("")
-async def delete(request: Request, request_data: DELETERequest):
-    doc_uuid = (await validate_access(request.state.auth))["data"]
-    
+async def delete(
+    request: Request,
+    request_data: DELETERequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    auth_header = credentials.credentials
+    doc_uuid = (await validate_access(auth_header))["data"]
     try:
         await xSupaBase.delete_sdoc("i-remember", doc_id=doc_uuid)
-        
         # Remove from cache after successful deletion
         await document_cache.delete(doc_uuid)
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return JSONResponse(status_code=200, content={"detail": "Document deleted successfully"})
