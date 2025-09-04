@@ -626,7 +626,7 @@
         async function getData() {
             if (!currentKey) return addToOutput('No authorization key available', 'error');
             addToOutput('Retrieving stored data...', 'info');
-            await makeRequest('GET', '/i-remember', { 'Authorization': currentKey });
+            await makeRequest('GET', '/i-remember', { 'Authorization': `Bearer ${currentKey}` });
         }
 
         async function updateData() {
@@ -636,7 +636,7 @@
             if (!data || duration === null) return;
 
             addToOutput('Updating existing data...', 'info');
-            const result = await makeRequest('PUT', '/i-remember', { 'Authorization': currentKey }, {
+            const result = await makeRequest('PUT', '/i-remember', { 'Authorization': `Bearer ${currentKey}` }, {
                 data,
                 valid: duration
             });
@@ -657,7 +657,7 @@
             if (!currentKey) return addToOutput('No authorization key available', 'error');
             
             addToOutput('Deleting data entry...', 'info');
-            const result = await makeRequest('DELETE', '/i-remember', { 'Authorization': currentKey }, {});
+            const result = await makeRequest('DELETE', '/i-remember', { 'Authorization': `Bearer ${currentKey}` }, {});
             
             if (result?.response.ok) {
                 deleteStoredKey(currentKeyIndex);
