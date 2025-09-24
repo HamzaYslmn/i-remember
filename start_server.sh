@@ -16,7 +16,7 @@ wait_for_port() {
 start_service() {
     local name="$1" path="$2" port="$3"
     echo "Starting ${name} on port ${port} ..."
-    (cd "$path" && uv run uvicorn xMain:app --host 0.0.0.0 --port "$port") &
+    (cd "$path" && uv run uvicorn xMain:app --host 0.0.0.0 --port "$port" --workers 2) &
     SERVICE_PIDS+=("$!")
     echo "${name} PID: $!"
     wait_for_port "$port"
