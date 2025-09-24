@@ -1,5 +1,0 @@
-fastapi[standard]
-uvicorn[standard]
-python-dotenv
-supabase
-python-jose

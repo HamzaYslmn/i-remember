@@ -13,16 +13,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# -------------------- Backend Setup --------------------
-# Install uv package manager
+## Install uv
 RUN pip install --no-cache-dir uv
+COPY pyproject.toml .
+COPY .python-version .
+COPY uv.lock .
 
-# Install Python dependencies
-COPY BackEnd/requirements.txt ./BackEnd/requirements.txt
-RUN uv pip install --system -r ./BackEnd/requirements.txt
-
-# Copy backend code
+# Copy application code
 COPY ./BackEnd/ ./BackEnd/
+RUN uv sync
 
 # -------------------- Frontend Setup --------------------
 COPY ./FrontEnd/ ./FrontEnd/
