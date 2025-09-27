@@ -99,14 +99,14 @@ async def add(request: Request, request_data: POSTRequest):
             "i-remember", 
             select="uuid",  # Only select minimal field for counting
             filters={"client_ip": new_data["client_ip"]},
-            limit=3  # We only need to know if there are 2 or more
+            limit=3  # We only need to know if there are 10 or more
         )
-        if read_data.get('count', 0) >= 2:
-            raise HTTPException(status_code=400, detail="You can only create two documents.")
+        if read_data.get('count', 0) >= 10:
+            raise HTTPException(status_code=400, detail="You can only create ten documents.")
     except Exception as e:
-        if "Response data is empty" not in str(e) and "You can only create two document" not in str(e):
+        if "Response data is empty" not in str(e) and "You can only create ten document" not in str(e):
             raise HTTPException(status_code=500, detail=str(e))
-        elif "You can only create two document" in str(e):
+        elif "You can only create ten document" in str(e):
             raise e
     
     try:

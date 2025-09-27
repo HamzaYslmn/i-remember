@@ -140,7 +140,7 @@ Common HTTP status codes:
 
 ## Rate Limiting
 
-- Two documents per IP address
+- 10 documents per IP address
 - Document automatically expires based on `valid` parameter
 - JWT tokens have the same expiration as the document, auto delete after expiration. You can extend the expiration by updating the document.
 
