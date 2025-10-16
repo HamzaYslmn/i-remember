@@ -101,7 +101,7 @@ async def add(request: Request, request_data: POSTRequest):
             filters={"client_ip": new_data["client_ip"]},
             limit=3  # We only need to know if there are 10 or more
         )
-        if read_data.get('count', 0) >= 10:
+        if read_data.get('count', 0) >= 100:
             raise HTTPException(status_code=400, detail="You can only create ten documents.")
     except Exception as e:
         if "Response data is empty" not in str(e) and "You can only create ten document" not in str(e):
